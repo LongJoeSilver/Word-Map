@@ -1,0 +1,803 @@
+<!doctype html>
+<html lang="en-NZ">
+<head>
+<title>Visual Dictionary</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Type a word, see a map of the words around it.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: soft grey ground, white cards nested in pale tiles. The map card fills the left; a stack of small cards (headword, meanings, opposites) runs down the right, stacking under the map on phones. */
+:root {
+  --ground: #f3f4f6;
+  --tile: #eceef2;
+  --card: #ffffff;
+  --ink: #0b0d14;
+  --muted: #868b96;
+  --faint: #c9cdd5;
+  --line: #e6e8ed;
+  --blue: #2b4bf2;
+  --blue-soft: #e8ecff;
+  --orange: #ff6a1f;
+  --night: #0a0d1a;
+  --night-ink: #ffffff;
+  --shadow: 0 1px 2px rgba(11, 13, 20, .06), 0 4px 14px rgba(11, 13, 20, .06);
+  --pos-noun: var(--blue);
+  --pos-verb: var(--orange);
+  --pos-adjective: var(--ink);
+  --pos-adverb: #9aa3b5;
+  --pos-other: var(--muted);
+  --font: "Geist", "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "Geist Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --r-tile: 28px;
+  --r-card: 22px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground: #08090d; --tile: #11131a; --card: #191c25; --ink: #f2f3f7; --muted: #8d93a1; --faint: #3a3f4c;
+    --line: #262a35; --blue: #5a74ff; --blue-soft: #1d2550; --orange: #ff7a35; --night: #000000; --night-ink: #ffffff;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 4px 14px rgba(0,0,0,.3); --pos-adverb: #6f7889; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --ground: #08090d; --tile: #11131a; --card: #191c25; --ink: #f2f3f7; --muted: #8d93a1; --faint: #3a3f4c;
+  --line: #262a35; --blue: #5a74ff; --blue-soft: #1d2550; --orange: #ff7a35; --night: #000000; --night-ink: #ffffff;
+  --shadow: 0 1px 2px rgba(0,0,0,.4), 0 4px 14px rgba(0,0,0,.3); --pos-adverb: #6f7889; color-scheme: dark;
+}
+*, *::before, *::after { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body {
+  background: var(--ground); color: var(--ink); font-family: var(--font); font-size: 15px; line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+}
+[hidden] { display: none !important; }
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+
+.app {
+  height: 100%; display: grid; grid-template-rows: auto minmax(0, 1fr); gap: 12px;
+  padding-block: 16px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.tile { background: var(--tile); border-radius: var(--r-tile); padding: 10px; min-width: 0; }
+.card { background: var(--card); border-radius: var(--r-card); box-shadow: var(--shadow); min-width: 0; }
+
+/* top bar */
+.bar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; padding: 6px 6px 6px 16px; }
+.bar h1 { margin: 0; font-size: 19px; font-weight: 500; letter-spacing: -.01em; }
+.bar h1 small { display: block; font-size: 13px; color: var(--muted); font-weight: 400; letter-spacing: 0; }
+form.search {
+  margin-left: auto; flex: 1 1 360px; max-width: 560px; display: flex; align-items: center; gap: 10px;
+  background: var(--card); border-radius: 999px; padding: 6px 6px 6px 18px; box-shadow: var(--shadow);
+}
+.search svg { flex: none; color: var(--muted); }
+.search label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.search input {
+  flex: 1; min-width: 0; border: 0; background: transparent; color: var(--ink);
+  font: 500 17px/1.3 var(--font); padding: 8px 0;
+}
+.search input::placeholder { color: var(--muted); font-weight: 400; }
+.search input:focus { outline: none; }
+.pill-btn {
+  flex: none; background: var(--blue); color: #fff; border-radius: 999px; padding: 10px 18px;
+  font-weight: 500; font-size: 15px; transition: filter .2s ease, transform .1s ease;
+}
+.pill-btn:hover { filter: brightness(1.08); }
+.pill-btn:active { transform: scale(.97); }
+.pill-btn.dark { background: var(--ink); color: var(--card); }
+
+/* main */
+.work { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 12px; min-height: 0; }
+.stage-tile { display: flex; min-height: 0; }
+.stage { position: relative; flex: 1; overflow: hidden; }
+.stage svg { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; border-radius: var(--r-card); }
+.stage svg:active { cursor: grabbing; }
+
+.trail {
+  position: absolute; top: 14px; left: 14px; right: 14px; z-index: 2;
+  display: flex; flex-wrap: wrap; gap: 4px; pointer-events: none;
+}
+.trail-inner { display: inline-flex; flex-wrap: wrap; gap: 2px; background: var(--tile); border-radius: 999px; padding: 4px; pointer-events: auto; max-width: 100%; }
+.trail button, .trail span {
+  border-radius: 999px; padding: 6px 14px; font-size: 14px; color: var(--muted); transition: color .2s ease, background .2s ease;
+}
+.trail button:hover { color: var(--ink); }
+.trail .here { background: var(--card); color: var(--ink); box-shadow: var(--shadow); font-weight: 500; }
+
+.dock {
+  position: absolute; right: 14px; bottom: 14px; z-index: 2; display: flex; align-items: center; gap: 2px;
+  background: var(--card); border-radius: 999px; box-shadow: var(--shadow); padding: 5px;
+}
+.step {
+  width: 32px; height: 32px; border-radius: 999px; background: var(--ground); display: grid; place-items: center;
+  font-size: 18px; font-weight: 500; line-height: 1; transition: background .2s ease, color .2s ease, transform .1s ease;
+}
+.step:hover { color: var(--blue); }
+.step:active { transform: scale(.92); }
+.step[disabled] { color: var(--faint); cursor: default; }
+.zread { min-width: 54px; text-align: center; font-family: var(--mono); font-size: 13px; font-variant-numeric: tabular-nums; }
+.fit {
+  margin-left: 4px; height: 32px; padding: 0 14px; border-radius: 999px; background: var(--ink); color: var(--card);
+  font-size: 13px; font-weight: 500; transition: filter .2s ease, transform .1s ease;
+}
+.fit:hover { filter: brightness(1.25); }
+.fit:active { transform: scale(.96); }
+.round {
+  width: 42px; height: 42px; border-radius: 999px; background: var(--card); box-shadow: var(--shadow);
+  display: grid; place-items: center; transition: transform .1s ease, color .2s ease;
+}
+.round:hover { color: var(--blue); }
+.round:active { transform: scale(.94); }
+.round.dark { background: var(--ink); color: var(--card); }
+.round.dark:hover { color: var(--card); filter: brightness(1.2); }
+
+.legend {
+  position: absolute; left: 14px; bottom: 14px; z-index: 2; display: flex; flex-wrap: wrap; gap: 6px 14px;
+  font-size: 13px; color: var(--muted); max-width: calc(100% - 180px);
+}
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+.legend .opp i { width: 16px; height: 0; border-radius: 0; border-top: 1.5px dashed var(--orange); }
+.legend .rel i { background: transparent; border: 1.5px solid var(--faint); }
+
+.toast {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 3;
+  display: flex; align-items: center; gap: 12px; padding: 10px 18px 10px 10px; border-radius: 999px;
+  background: var(--card); box-shadow: var(--shadow); font-weight: 500; white-space: nowrap;
+}
+.toast .spin { width: 30px; height: 30px; border-radius: 999px; background: var(--blue); display: grid; place-items: center; }
+.toast .spin i { width: 12px; height: 12px; border: 2px solid #fff; border-right-color: transparent; border-radius: 999px; animation: spin .8s linear infinite; }
+.toast .meta { font-family: var(--mono); font-size: 13px; color: var(--muted); font-weight: 400; }
+.toast button { color: var(--muted); font-size: 13px; text-decoration: underline; text-underline-offset: 3px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.tip {
+  position: absolute; z-index: 4; max-width: 260px; padding: 8px 12px; border-radius: 12px;
+  background: var(--night); color: var(--night-ink); font-size: 13px; line-height: 1.4; pointer-events: none;
+}
+.tip b { display: block; font-weight: 500; color: #a9b4ff; margin-bottom: 2px; }
+
+/* map marks */
+.link { stroke: var(--line); stroke-width: 1.5; fill: none; }
+.link.opp { stroke: var(--orange); stroke-dasharray: 5 5; }
+.node { cursor: pointer; }
+.node rect { fill: var(--card); stroke: var(--line); stroke-width: 1; filter: url(#lift); transition: stroke .2s ease; }
+.node text { font-family: var(--font); font-size: 16px; font-weight: 500; fill: var(--ink); text-anchor: middle; dominant-baseline: central; transition: fill .2s ease; }
+.node.related rect { filter: none; fill: var(--ground); stroke: transparent; }
+.node.related text { fill: var(--muted); font-weight: 400; }
+.node:hover rect, .node:focus-visible rect, .node.lit rect { stroke: var(--blue); }
+.node:hover text, .node:focus-visible text, .node.lit text { fill: var(--blue); }
+.node:focus, .node:focus-visible, .sense:focus { outline: none; }
+.node:focus-visible rect { stroke-width: 2; }
+.node.center { cursor: default; }
+.node.center rect { fill: var(--night); stroke: var(--night); }
+.node.center text { fill: var(--night-ink); font-size: 22px; }
+.node.opposite rect { stroke: var(--orange); stroke-dasharray: 4 3; filter: none; }
+.sense rect { stroke: var(--card); stroke-width: 3; cursor: help; transition: transform .2s ease; }
+.sense.lit rect { stroke: var(--blue-soft); }
+
+/* side cards */
+.side { display: flex; flex-direction: column; gap: 12px; min-height: 0; overflow-y: auto; border-radius: var(--r-tile); }
+.head-card { padding: 20px 22px; display: flex; flex-direction: column; gap: 14px; }
+.head-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.head-card h2 { margin: 0; font-size: 34px; line-height: 1.1; font-weight: 500; letter-spacing: -.025em; overflow-wrap: anywhere; }
+.source {
+  flex: none; display: inline-flex; align-items: center; gap: 8px; background: var(--night); color: var(--night-ink);
+  border-radius: 999px; padding: 6px 12px 6px 8px; font-size: 13px; font-weight: 500;
+}
+.source i { width: 16px; height: 16px; border-radius: 5px; background: var(--blue); display: inline-block; }
+.source.claude i { background: var(--orange); }
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.stat { background: var(--ground); border-radius: 14px; padding: 10px 12px; display: flex; flex-direction: column; gap: 2px; }
+.stat b { font-family: var(--mono); font-weight: 500; font-size: 22px; font-variant-numeric: tabular-nums; }
+.stat span { font-size: 12px; color: var(--muted); }
+.note { margin: 0; font-size: 13px; color: var(--muted); }
+.note.flag { color: var(--orange); }
+
+.list-card { padding: 8px 8px; }
+.list-card > h3 { margin: 0; padding: 12px 14px 6px; font-size: 15px; font-weight: 500; display: flex; justify-content: space-between; gap: 8px; }
+.list-card > h3 span { color: var(--muted); font-weight: 400; font-family: var(--mono); font-size: 13px; }
+.senses { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.senses li { padding: 12px 14px; border-radius: 16px; display: flex; flex-direction: column; gap: 10px; transition: background .2s ease; }
+.senses li + li { border-top: 1px solid var(--line); }
+.senses li.lit { background: var(--ground); border-top-color: transparent; }
+.senses li.lit + li { border-top-color: transparent; }
+.sense-head { display: flex; align-items: flex-start; gap: 12px; }
+.sq { flex: none; width: 26px; height: 26px; border-radius: 8px; display: grid; place-items: center; margin-top: 1px; }
+.sq::after { content: ""; width: 8px; height: 8px; border-radius: 2px; background: #fff; }
+.sense-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.sense-text b { font-weight: 500; }
+.sense-text span { font-size: 12px; color: var(--muted); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; padding-left: 38px; }
+.chip {
+  background: var(--card); border: 1px solid var(--line); border-radius: 999px; padding: 4px 11px; font-size: 13.5px;
+  transition: color .2s ease, border-color .2s ease, background .2s ease;
+}
+.chip.related { background: var(--ground); border-color: transparent; color: var(--muted); }
+.chip:hover, .chip.lit { color: var(--blue); border-color: var(--blue); }
+.chip.opposite { border-style: dashed; border-color: var(--orange); }
+.opp-card .chips { padding: 4px 14px 14px; }
+
+.empty-card { padding: 22px; display: flex; flex-direction: column; gap: 12px; align-items: flex-start; }
+.empty-card p { margin: 0; color: var(--muted); }
+
+.foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; padding: 4px 8px 6px; font-size: 12px; color: var(--muted); }
+.foot a { color: inherit; }
+.copy-btn { font-size: 13px; font-weight: 500; color: var(--ink); background: var(--card); border-radius: 999px; padding: 7px 14px; box-shadow: var(--shadow); }
+.copy-btn:hover { color: var(--blue); }
+
+@media (max-width: 900px) {
+  html, body { height: auto; }
+  .app { height: auto; }
+  .work { grid-template-columns: 1fr; }
+  .stage-tile { height: 66vh; min-height: 420px; }
+  .side { overflow: visible; }
+}
+@media (max-width: 560px) {
+  .legend { display: none; }
+  .head-card h2 { font-size: 28px; }
+  form.search { flex-basis: 100%; }
+}
+.refresh { animation: fadeUp .45s cubic-bezier(.22,.61,.36,1) both; }
+@keyframes fadeUp { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="tile bar">
+    <h1>Visual Dictionary<small>Type a word, then click any word on the map to follow it</small></h1>
+    <form class="search" id="search" autocomplete="off">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <label for="q">Word to map</label>
+      <input id="q" name="q" type="search" placeholder="Try harvest, bold or fresh" maxlength="40" spellcheck="true">
+      <button class="pill-btn" id="go" type="submit">Map it</button>
+    </form>
+  </header>
+
+  <main class="work">
+    <section class="tile stage-tile" aria-label="Word map">
+      <div class="card stage" id="stage">
+        <nav class="trail" id="trail" aria-label="Words you've mapped"></nav>
+        <svg id="map" role="img" aria-label="Map of related words">
+          <defs>
+            <filter id="lift" x="-20%" y="-40%" width="140%" height="190%">
+              <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#0b0d14" flood-opacity=".08"/>
+            </filter>
+          </defs>
+        </svg>
+        <div class="legend">
+          <span><i style="background:var(--pos-noun)"></i>Noun</span>
+          <span><i style="background:var(--pos-verb)"></i>Verb</span>
+          <span><i style="background:var(--pos-adjective)"></i>Adjective</span>
+          <span><i style="background:var(--pos-adverb)"></i>Adverb</span>
+          <span class="rel"><i></i>Related</span>
+          <span class="opp"><i></i>Opposite</span>
+        </div>
+        <div class="dock" role="group" aria-label="Zoom">
+          <button class="step" type="button" id="zout" aria-label="Zoom out">−</button>
+          <span class="zread" id="zread" aria-live="polite">100%</span>
+          <button class="step" type="button" id="zin" aria-label="Zoom in">+</button>
+          <button class="fit" type="button" id="zfit" aria-label="Fit map to screen">Fit</button>
+        </div>
+        <div class="toast" id="loading" hidden>
+          <span class="spin"><i></i></span>
+          <span id="loading-word">Mapping</span>
+          <span class="meta" id="loading-meta"></span>
+          <button type="button" id="stop">Stop</button>
+        </div>
+        <div class="tip" id="tip" hidden></div>
+      </div>
+    </section>
+
+    <aside class="side" id="side" aria-live="polite">
+      <div class="tile">
+        <div class="card head-card">
+          <div class="head-top">
+            <h2 id="p-word">…</h2>
+            <span class="source" id="p-source"><i></i><span>Dictionary</span></span>
+          </div>
+          <div class="stats">
+            <div class="stat"><b id="s-senses">0</b><span>meanings</span></div>
+            <div class="stat"><b id="s-words">0</b><span>words</span></div>
+            <div class="stat"><b id="s-opp">0</b><span>opposites</span></div>
+          </div>
+          <p class="note" id="p-note">Loading the dictionary</p>
+        </div>
+      </div>
+      <div class="tile" id="miss" hidden>
+        <div class="card empty-card">
+          <b id="miss-title">Not in the dictionary</b>
+          <p id="miss-text">The built-in dictionary doesn't have that one. Slang, brand names and new words often aren't in it.</p>
+          <button class="pill-btn dark" type="button" id="ask">Ask Claude instead</button>
+        </div>
+      </div>
+      <div class="tile">
+        <div class="card list-card">
+          <h3>Meanings <span id="p-count"></span></h3>
+          <ul class="senses" id="p-senses"></ul>
+        </div>
+      </div>
+      <div class="tile" id="opp-tile" hidden>
+        <div class="card list-card opp-card">
+          <h3>Opposites</h3>
+          <div class="chips" id="p-opp"></div>
+        </div>
+      </div>
+      <div class="foot">
+        <span>Words from <a href="https://en-word.net/" target="_blank" rel="noopener">Open English WordNet 2024</a>, CC BY 4.0</span>
+        <button class="copy-btn" type="button" id="copy">Copy all words</button>
+      </div>
+    </aside>
+  </main>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script>
+(() => {
+  "use strict";
+  const SHARDS = 200;
+  const MAP_WORDS = 6;
+  const POS = ["noun", "verb", "adjective", "adverb"];
+  const posColor = p => `var(--pos-${POS.includes(p) ? p : "other"})`;
+  const posLabel = p => POS.includes(p) ? p[0].toUpperCase() + p.slice(1) : "Other";
+  const cap = s => s ? s[0].toUpperCase() + s.slice(1) : s;
+
+  const $ = id => document.getElementById(id);
+  const svg = d3.select("#map");
+  const root = svg.append("g");
+  let layer = null;   // the map currently on screen: { g, gNodes, nodes }
+  let anim = null;    // the timer easing nodes into place
+  const DUR = 820;    // how long each node takes to settle, ms
+  const stage = $("stage"), tip = $("tip");
+
+  const store = {
+    get(k) { try { return JSON.parse(localStorage.getItem("vd2:" + k)); } catch { return null; } },
+    set(k, v) { try { localStorage.setItem("vd2:" + k, JSON.stringify(v)); } catch {} }
+  };
+
+  let askOn = false;
+  let trail = [], current = null, sim = null, ctl = null, missWord = null;
+
+  // ---------- local dictionary ----------
+  const fnv = s => {
+    let h = 0x811c9dc5;
+    for (const b of new TextEncoder().encode(s)) { h ^= b; h = Math.imul(h, 0x01000193) >>> 0; }
+    return h;
+  };
+  const shardCache = new Map();
+  function shard(key) {
+    const n = String(fnv(key) % SHARDS).padStart(3, "0");
+    if (!shardCache.has(n)) {
+      shardCache.set(n, fetch("dict/" + n + ".json").then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
+        .catch(e => { shardCache.delete(n); throw e; }));
+    }
+    return shardCache.get(n);
+  }
+  function variants(key) {
+    const v = [key];
+    const add = s => { if (s && s.length > 1 && !v.includes(s)) v.push(s); };
+    if (key.endsWith("ies")) add(key.slice(0, -3) + "y");
+    if (key.endsWith("es")) add(key.slice(0, -2));
+    if (key.endsWith("s") && !key.endsWith("ss")) add(key.slice(0, -1));
+    if (key.endsWith("ied")) add(key.slice(0, -3) + "y");
+    if (key.endsWith("ed")) { add(key.slice(0, -2)); add(key.slice(0, -1)); if (/(.)\1ed$/.test(key)) add(key.slice(0, -3)); }
+    if (key.endsWith("ing")) { add(key.slice(0, -3)); add(key.slice(0, -3) + "e"); if (/(.)\1ing$/.test(key)) add(key.slice(0, -4)); }
+    if (key.endsWith("er")) { add(key.slice(0, -2)); add(key.slice(0, -1)); }
+    if (key.endsWith("est")) { add(key.slice(0, -3)); add(key.slice(0, -2)); }
+    if (key.endsWith("ly")) add(key.slice(0, -2));
+    // British/NZ spellings → WordNet's US spellings
+    if (/our/.test(key)) add(key.replace(/our\b/, "or").replace(/our(?=[a-z])/, "or"));
+    if (/ise/.test(key)) add(key.replace(/is(e|ed|es|ing|ation)\b/, "iz$1"));
+    if (/re\b/.test(key)) add(key.replace(/re\b/, "er"));
+    return v;
+  }
+  async function localLookup(key) {
+    for (const k of variants(key)) {
+      const data = await shard(k);
+      const e = data[k];
+      if (e) return {
+        word: e[0], source: "dictionary", asked: key !== k ? key : null,
+        senses: e[1].map(s => ({ pos: s[0], gloss: cap(s[1]), words: s[2], nsyn: s[3] })),
+        opposites: e[2] || []
+      };
+    }
+    return null;
+  }
+
+  // ---------- zoom ----------
+  const zoom = d3.zoom().scaleExtent([0.3, 3]).on("zoom", e => {
+    root.attr("transform", e.transform);
+    const k = e.transform.k;
+    $("zread").textContent = Math.round(k * 100) + "%";
+    $("zout").disabled = k <= 0.301;
+    $("zin").disabled = k >= 2.99;
+  });
+  svg.call(zoom).on("dblclick.zoom", null);
+  const reduced = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const size = () => { const r = stage.getBoundingClientRect(); return { w: r.width, h: r.height }; };
+  function boundsOf(nodes, useEnd) {
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    nodes.forEach(n => {
+      const x = useEnd ? n.ex : n.x, y = useEnd ? n.ey : n.y;
+      const hw = (n.w || 18) / 2, hh = (n.h || 18) / 2;
+      x0 = Math.min(x0, x - hw); x1 = Math.max(x1, x + hw); y0 = Math.min(y0, y - hh); y1 = Math.max(y1, y + hh);
+    });
+    return { x: x0, y: y0, width: x1 - x0, height: y1 - y0 };
+  }
+  function fitTo(b, duration) {
+    if (!b || !isFinite(b.width) || !b.width) return;
+    const { w, h } = size();
+    const k = Math.max(0.3, Math.min(1.3, Math.min((w - 80) / b.width, (h - 150) / b.height)));
+    const t = d3.zoomIdentity.translate(w / 2 - (b.x + b.width / 2) * k, h / 2 + 4 - (b.y + b.height / 2) * k).scale(k);
+    if (duration && !reduced()) svg.transition("fit").duration(duration).ease(d3.easeCubicInOut).call(zoom.transform, t);
+    else { svg.interrupt("fit"); svg.call(zoom.transform, t); }
+  }
+  function fit(animate = true) { if (layer) fitTo(boundsOf(layer.nodes, !!anim), animate ? 650 : (anim ? 1 : 0)); }
+  { const { w, h } = size(); svg.call(zoom.transform, d3.zoomIdentity.translate(w / 2, h / 2)); }
+  $("zin").onclick = () => svg.transition().duration(250).call(zoom.scaleBy, 1.25);
+  $("zout").onclick = () => svg.transition().duration(250).call(zoom.scaleBy, 0.8);
+  $("zfit").onclick = () => fit(true);
+
+  const measurer = svg.append("text").style("visibility", "hidden").attr("font-family", "Geist, Inter, system-ui, sans-serif").attr("font-weight", 500);
+  const textWidth = (str, px) => { measurer.attr("font-size", px).text(str); return measurer.node().getComputedTextLength(); };
+
+  // ---------- graph ----------
+  function buildGraph(data) {
+    const nodes = [], links = [];
+    const centerKey = data.word.toLowerCase();
+    const center = { id: "w:" + centerKey, kind: "center", label: data.word, fx: 0, fy: 0 };
+    nodes.push(center);
+    const idx = new Map();
+    const addWord = (w, kind) => {
+      const key = w.toLowerCase();
+      if (key === centerKey) return null;
+      if (!idx.has(key)) { const n = { id: "w:" + key, kind, label: w, senses: [] }; idx.set(key, n); nodes.push(n); }
+      const n = idx.get(key);
+      if (kind === "word" && n.kind === "related") n.kind = "word";
+      return n;
+    };
+    data.senses.forEach((s, i) => {
+      const a = (i / data.senses.length) * Math.PI * 2 - Math.PI / 2;
+      const sn = { id: "s:" + i, kind: "sense", pos: s.pos, gloss: s.gloss, index: i,
+        x: Math.cos(a) * 14, y: Math.sin(a) * 14 };
+      nodes.push(sn);
+      links.push({ source: center.id, target: sn.id, kind: "sense" });
+      s.words.slice(0, MAP_WORDS).forEach((w, j) => {
+        const wn = addWord(w, j < s.nsyn ? "word" : "related");
+        if (!wn) return;
+        wn.senses.push(i);
+        if (wn.x == null) { const b = a + (j - 2) * 0.12; wn.x = Math.cos(b) * 26; wn.y = Math.sin(b) * 26; }
+        links.push({ source: sn.id, target: wn.id, kind: "word" });
+      });
+    });
+    (data.opposites || []).forEach((w, i) => {
+      const wn = addWord(w, "opposite");
+      if (!wn) return;
+      wn.kind = "opposite";
+      if (wn.x == null) { wn.x = (i - 2) * 6; wn.y = 30; }
+      links.push({ source: center.id, target: wn.id, kind: "opp" });
+    });
+    nodes.forEach(n => {
+      if (n.kind === "sense") { n.r = 9; return; }
+      const big = n.kind === "center";
+      n.w = Math.ceil(textWidth(n.label, big ? 22 : 16)) + (big ? 48 : 30);
+      n.h = big ? 50 : 36;
+      n.r = n.w / 2;
+    });
+    return { nodes, links };
+  }
+
+  function render(data, anchor) {
+    if (sim) sim.stop();
+    if (anim) { anim.stop(); anim = null; }
+    hideTip();
+    const still = reduced();
+
+    // Retire the old map. If a word on it was clicked, shift the camera so the new
+    // centre sits exactly where that word was, then let the old map fade away in place.
+    if (layer) {
+      const old = layer.g.attr("pointer-events", "none");
+      if (anchor) {
+        svg.interrupt("fit");
+        const t0 = d3.zoomTransform(svg.node());
+        old.attr("transform", `translate(${-anchor.x},${-anchor.y})`);
+        svg.call(zoom.transform, t0.translate(anchor.x, anchor.y));
+        old.selectAll("g").filter(n => n && n.x === anchor.x && n.y === anchor.y).remove();
+      }
+      if (still) old.remove();
+      else old.transition().duration(420).ease(d3.easeCubicOut).style("opacity", 0).remove();
+    }
+
+    const { nodes, links } = buildGraph(data);
+    const g = root.append("g").attr("class", "layer");
+    const gL = g.append("g"), gN = g.append("g");
+    layer = { g, gNodes: gN, nodes };
+
+    const link = gL.selectAll("line").data(links).enter().append("line")
+      .attr("class", d => "link" + (d.kind === "opp" ? " opp" : ""));
+    const node = gN.selectAll("g").data(nodes, d => d.id).enter().append("g")
+      .attr("class", d => d.kind === "sense" ? "sense" : "node " + d.kind);
+
+    const words = node.filter(d => d.kind !== "sense");
+    words.append("rect").attr("x", d => -d.w / 2).attr("y", d => -d.h / 2)
+      .attr("width", d => d.w).attr("height", d => d.h).attr("rx", d => d.h / 2);
+    words.append("text").text(d => d.label);
+    words.filter(d => d.kind !== "center")
+      .attr("tabindex", 0).attr("role", "button").attr("aria-label", d => "Map " + d.label)
+      .on("click", (e, d) => { if (!e.defaultPrevented) lookup(d.label, d); })
+      .on("keydown", (e, d) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); lookup(d.label, d); } })
+      .on("mouseenter focus", (e, d) => highlight(d))
+      .on("mouseleave blur", () => highlight(null));
+
+    const senses = node.filter(d => d.kind === "sense");
+    senses.append("rect").attr("x", -9).attr("y", -9).attr("width", 18).attr("height", 18).attr("rx", 5)
+      .attr("fill", d => posColor(d.pos));
+    senses.on("mouseenter", (e, d) => { highlight(d); showTip(e, d); })
+      .on("mousemove", (e, d) => showTip(e, d))
+      .on("mouseleave", () => { highlight(null); hideTip(); })
+      .on("click", (e, d) => { highlight(d); showTip(e, d); });
+
+    sim = d3.forceSimulation(nodes)
+      .force("link", d3.forceLink(links).id(d => d.id)
+        .distance(l => l.kind === "sense" ? 120 : l.kind === "opp" ? 240 : 64 + l.target.r * 0.6)
+        .strength(l => l.kind === "word" ? 0.9 : 0.7))
+      .force("charge", d3.forceManyBody().strength(d => d.kind === "sense" ? -260 : -480))
+      .force("collide", d3.forceCollide().radius(d => d.kind === "sense" ? 16 : d.r * 0.8 + 8).strength(0.9))
+      .force("x", d3.forceX(0).strength(0.02))
+      .force("y", d3.forceY(0).strength(0.04))
+      .velocityDecay(0.5)
+      .stop();
+
+    // Work out the finished layout off screen, then glide every node to it.
+    nodes.forEach(n => { n.sx = n.x; n.sy = n.y; });
+    for (let i = 0; i < 320; i++) sim.tick();
+    nodes.forEach(n => { n.ex = n.x; n.ey = n.y; n.vx = n.vy = 0; });
+
+    const draw = () => {
+      link.attr("x1", d => d.source.x).attr("y1", d => d.source.y)
+        .attr("x2", d => d.target.x).attr("y2", d => d.target.y)
+        .style("opacity", d => Math.min(d.source.op, d.target.op));
+      node.attr("transform", d => `translate(${d.x},${d.y})`).style("opacity", d => d.op);
+    };
+    sim.on("tick", draw);
+
+    fitTo(boundsOf(nodes, true), still ? 0 : 1000);
+
+    if (still) {
+      nodes.forEach(n => { n.op = 1; });
+      draw();
+    } else {
+      let wi = 0;
+      nodes.forEach(n => {
+        n.delay = n.kind === "center" ? 0 : n.kind === "sense" ? 80 + n.index * 45 : Math.min(260 + (wi++) * 14, 700);
+        n.x = n.sx; n.y = n.sy; n.op = n.kind === "center" ? 1 : 0;
+      });
+      draw();
+      anim = d3.timer(el => {
+        let done = true;
+        nodes.forEach(n => {
+          const p = Math.max(0, Math.min(1, (el - n.delay) / DUR));
+          if (p < 1) done = false;
+          const e = d3.easeCubicOut(p);
+          n.x = n.sx + (n.ex - n.sx) * e;
+          n.y = n.sy + (n.ey - n.sy) * e;
+          if (n.kind !== "center") n.op = Math.min(1, p * 1.8);
+        });
+        draw();
+        if (done) { anim.stop(); anim = null; }
+      });
+    }
+
+    node.filter(d => d.kind !== "center").call(d3.drag()
+      .filter(e => !anim && !e.button)
+      .on("start", (e, d) => { if (!e.active) sim.alphaTarget(0.15).restart(); d.fx = d.x; d.fy = d.y; })
+      .on("drag", (e, d) => { d.fx = e.x; d.fy = e.y; })
+      .on("end", (e, d) => { if (!e.active) sim.alphaTarget(0); d.fx = null; d.fy = null; }));
+  }
+
+  function highlight(d) {
+    const lit = new Set(), senseSet = new Set();
+    if (d && current) {
+      lit.add(d.id);
+      if (d.kind === "sense") { senseSet.add(d.index); current.senses[d.index].words.forEach(w => lit.add("w:" + w.toLowerCase())); }
+      else if (d.senses) d.senses.forEach(i => { senseSet.add(i); lit.add("s:" + i); });
+    }
+    if (!layer) return;
+    layer.gNodes.selectAll("g").classed("lit", n => lit.has(n.id) && n.kind !== "center");
+    document.querySelectorAll(".senses li").forEach((li, i) => li.classList.toggle("lit", senseSet.has(i)));
+    document.querySelectorAll(".chip").forEach(c => c.classList.toggle("lit", lit.has("w:" + c.dataset.word.toLowerCase())));
+  }
+  function showTip(e, d) {
+    tip.innerHTML = "";
+    const b = document.createElement("b"); b.textContent = posLabel(d.pos);
+    tip.append(b, document.createTextNode(d.gloss));
+    tip.hidden = false;
+    const r = stage.getBoundingClientRect();
+    let x = e.clientX - r.left + 14, y = e.clientY - r.top + 14;
+    if (x + tip.offsetWidth > r.width - 8) x = e.clientX - r.left - tip.offsetWidth - 14;
+    if (y + tip.offsetHeight > r.height - 8) y = e.clientY - r.top - tip.offsetHeight - 14;
+    tip.style.left = Math.max(8, x) + "px"; tip.style.top = Math.max(8, y) + "px";
+  }
+  const hideTip = () => { tip.hidden = true; };
+
+  // ---------- side cards ----------
+  function renderPanel(data, note, flag) {
+    $("p-word").textContent = data.word;
+    ["p-word", "p-senses", "p-opp"].forEach(id => { const el = $(id); el.classList.remove("refresh"); void el.offsetWidth; el.classList.add("refresh"); });
+    const src = $("p-source");
+    src.classList.toggle("claude", data.source === "claude");
+    src.querySelector("span").textContent = data.source === "claude" ? "Claude" : "Dictionary";
+    const allWords = new Set(); data.senses.forEach(s => s.words.forEach(w => allWords.add(w.toLowerCase())));
+    $("s-senses").textContent = data.senses.length;
+    $("s-words").textContent = allWords.size;
+    $("s-opp").textContent = data.opposites.length;
+    $("p-count").textContent = data.senses.length + (data.senses.length === 1 ? " meaning" : " meanings");
+    setNote(note, flag);
+    const ul = $("p-senses"); ul.innerHTML = "";
+    data.senses.forEach((s, i) => {
+      const li = document.createElement("li");
+      li.addEventListener("mouseenter", () => highlight({ kind: "sense", index: i, id: "s:" + i }));
+      li.addEventListener("mouseleave", () => highlight(null));
+      const head = document.createElement("div"); head.className = "sense-head";
+      const sq = document.createElement("span"); sq.className = "sq"; sq.style.background = posColor(s.pos);
+      const tx = document.createElement("div"); tx.className = "sense-text";
+      const g = document.createElement("b"); g.textContent = s.gloss;
+      const p = document.createElement("span"); p.textContent = posLabel(s.pos) + (s.nsyn < s.words.length ? ` · ${s.nsyn} synonyms, ${s.words.length - s.nsyn} related` : "");
+      tx.append(g, p); head.append(sq, tx);
+      const chips = document.createElement("div"); chips.className = "chips";
+      s.words.forEach((w, j) => { const c = chip(w); if (j >= s.nsyn) c.classList.add("related"); chips.append(c); });
+      li.append(head, chips); ul.append(li);
+    });
+    $("opp-tile").hidden = !data.opposites.length;
+    const op = $("p-opp"); op.innerHTML = "";
+    data.opposites.forEach(w => { const c = chip(w); c.classList.add("opposite"); op.append(c); });
+  }
+  const nodeFor = w => layer ? layer.nodes.find(n => n.id === "w:" + w.toLowerCase()) : null;
+  function chip(w) {
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "chip"; b.textContent = w; b.dataset.word = w;
+    b.addEventListener("click", () => lookup(w, nodeFor(w)));
+    b.addEventListener("mouseenter", () => { const n = nodeFor(w); if (n) highlight(n); });
+    b.addEventListener("mouseleave", () => highlight(null));
+    return b;
+  }
+  function setNote(text, flag) { const n = $("p-note"); n.textContent = text || ""; n.hidden = !text; n.classList.toggle("flag", !!flag); }
+
+  function renderTrail() {
+    const t = $("trail"); t.innerHTML = "";
+    if (!trail.length) return;
+    const inner = document.createElement("div"); inner.className = "trail-inner";
+    const shown = trail.slice(-5);
+    if (trail.length > 5) { const s = document.createElement("span"); s.textContent = "…"; inner.append(s); }
+    shown.forEach((w, i) => {
+      if (i === shown.length - 1) { const s = document.createElement("span"); s.className = "here"; s.textContent = w; inner.append(s); }
+      else { const b = document.createElement("button"); b.type = "button"; b.textContent = w;
+        b.onclick = () => { trail = trail.slice(0, trail.lastIndexOf(w)); lookup(w); }; inner.append(b); }
+    });
+    t.append(inner);
+  }
+
+  const toSlug = w => w.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  const fromHash = () => { try { return decodeURIComponent(location.hash.slice(1)).replace(/-/g, " ").trim(); } catch { return ""; } };
+
+  function show(data, note, flag, anchor) {
+    current = data;
+    $("miss").hidden = true; missWord = null;
+    if (trail[trail.length - 1] !== data.word) trail.push(data.word);
+    renderTrail(); renderPanel(data, note, flag); render(data, anchor);
+    $("q").value = "";
+    const slug = toSlug(data.word);
+    if (slug && location.hash !== "#" + slug) { try { history.replaceState(null, "", "#" + slug); } catch {} }
+  }
+  function showMiss(word, text) {
+    missWord = word;
+    $("miss").hidden = false;
+    $("miss-title").textContent = `"${word}" isn't in the dictionary`;
+    $("miss-text").textContent = text || "Slang, brand names and new words often aren't in it. Claude can map it instead.";
+    $("ask").hidden = !askOn;
+    if (!askOn) $("miss-text").textContent = "Slang, brand names and new words often aren't in it.";
+  }
+
+  // ---------- lookup ----------
+  async function lookup(raw, fromNode) {
+    const word = String(raw || "").trim().replace(/\s+/g, " ").slice(0, 40);
+    if (!word) return;
+    const key = word.toLowerCase();
+    if (current && key === current.word.toLowerCase()) return;
+    const anchor = fromNode && fromNode.x != null && !anim ? { x: fromNode.x, y: fromNode.y } : null;
+    let data = null;
+    try { data = await localLookup(key); }
+    catch { showMiss(word, "The dictionary didn't load. Check your connection and try again."); return; }
+    if (data) { show(data, data.asked ? `Showing "${data.word}", the base form of "${word}".` : "", false, anchor); return; }
+    const saved = store.get(key);
+    if (saved) { show(saved, "Mapped by Claude earlier.", false, anchor); return; }
+    showMiss(word);
+  }
+
+  function clean(raw, asked) {
+    if (!raw || !Array.isArray(raw.senses)) throw { code: "invalid_json" };
+    const word = String(raw.word || asked).trim().slice(0, 40) || asked;
+    const senses = raw.senses.slice(0, 6).map(s => {
+      const words = (Array.isArray(s.words) ? s.words : []).map(w => String(w).trim().slice(0, 32))
+        .filter(w => w && w.toLowerCase() !== word.toLowerCase()).slice(0, 7);
+      return { pos: POS.includes(String(s.pos).toLowerCase()) ? String(s.pos).toLowerCase() : "other",
+        gloss: cap(String(s.gloss || "").trim().slice(0, 140)), words, nsyn: words.length };
+    }).filter(s => s.words.length);
+    if (!senses.length) throw { code: "empty" };
+    const opposites = (Array.isArray(raw.opposites) ? raw.opposites : []).map(w => String(w).trim().slice(0, 32)).filter(Boolean).slice(0, 5);
+    return { word, senses, opposites, source: "claude" };
+  }
+  const MESSAGES = {
+    off: "Asking Claude is switched off on this site.",
+    rate_limited: "That's a lot of lookups in a row. Give it a minute.",
+    refused: "Claude wouldn't map that one.",
+    empty: "Claude didn't find related words for that either.",
+    invalid_json: "The answer came back garbled. Try again.",
+    upstream_error: "The lookup dropped out. Try again."
+  };
+  const PERMANENT = new Set(["off"]);
+
+  $("ask").onclick = async () => {
+    const word = missWord;
+    if (!word || !askOn) return;
+    if (ctl) ctl.abort();
+    ctl = new AbortController(); const mine = ctl;
+    setLoading(word, "Claude");
+    try {
+      const res = await fetch("/api/map", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ word }), signal: mine.signal });
+      const body = await res.json().catch(() => ({ error: "upstream_error" }));
+      if (!res.ok || body.error) throw { code: body.error || "upstream_error" };
+      const data = clean(body, word);
+      store.set(word.toLowerCase(), data); store.set(data.word.toLowerCase(), data);
+      setLoading(null);
+      show(data, "Mapped by Claude. Not in the dictionary.");
+    } catch (e) {
+      if (mine !== ctl) return;
+      setLoading(null);
+      const code = e && e.code;
+      if (code === "cancelled" || (e && e.name === "AbortError")) return;
+      if (PERMANENT.has(code)) { askOn = false; showMiss(word, MESSAGES[code] || "Claude isn't available here."); return; }
+      showMiss(word, MESSAGES[code] || MESSAGES.upstream_error);
+    } finally { if (mine === ctl) ctl = null; }
+  };
+  function setLoading(word, meta) {
+    $("loading").hidden = !word; $("go").disabled = !!word; $("ask").disabled = !!word;
+    if (word) { $("loading-word").textContent = "Mapping " + word; $("loading-meta").textContent = meta || ""; }
+  }
+  $("stop").onclick = () => { if (ctl) ctl.abort(); setLoading(null); };
+
+  $("copy").onclick = async () => {
+    if (!current) return;
+    const lines = [current.word, ""];
+    current.senses.forEach(s => lines.push(`${posLabel(s.pos)}: ${s.gloss}`, "  " + s.words.join(", "), ""));
+    if (current.opposites.length) lines.push("Opposites: " + current.opposites.join(", "));
+    const btn = $("copy");
+    try { await navigator.clipboard.writeText(lines.join("\n").trim()); btn.textContent = "Copied"; }
+    catch { btn.textContent = "Copy didn't work here"; }
+    setTimeout(() => { btn.textContent = "Copy all words"; }, 1800);
+  };
+
+  $("search").addEventListener("submit", e => { e.preventDefault(); lookup($("q").value); });
+  window.addEventListener("hashchange", () => { const w = fromHash(); if (w && (!current || toSlug(current.word) !== toSlug(w))) lookup(w); });
+  let lastSize = size();
+  window.addEventListener("resize", () => {
+    clearTimeout(window.__vdR);
+    window.__vdR = setTimeout(() => {
+      const now = size();
+      if (Math.abs(now.w - lastSize.w) < 2 && Math.abs(now.h - lastSize.h) < 2) return;
+      lastSize = now;
+      fit(false);
+    }, 150);
+  });
+
+  // ---------- start ----------
+  lookup(fromHash() || "sand");
+  fetch("/api/map").then(r => r.ok ? r.json() : {}).catch(() => ({}))
+    .then(j => { askOn = !!(j && j.enabled); if (missWord) showMiss(missWord); });
+})();
+</script>
+</body>
+</html>
