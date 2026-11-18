@@ -22,7 +22,7 @@
   --orange: #ff6a1f;
   --night: #0a0d1a;
   --night-ink: #ffffff;
-  --shadow: 0 1px 2px rgba(11, 13, 20, .06), 0 4px 14px rgba(11, 13, 20, .06);
+  --shadow: 0 1px 2px rgba(11, 13, 20, .05), 0 8px 24px rgba(11, 13, 20, .07);
   --pos-noun: var(--blue);
   --pos-verb: var(--orange);
   --pos-adjective: var(--ink);
@@ -61,7 +61,8 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
   padding-left: max(16px, env(safe-area-inset-left, 0px));
   padding-right: max(16px, env(safe-area-inset-right, 0px));
 }
-.tile { background: var(--tile); border-radius: var(--r-tile); padding: 10px; min-width: 0; }
+.tile { min-width: 0; }
+.bar.tile { padding: 8px 10px 4px; }
 .card { background: var(--card); border-radius: var(--r-card); box-shadow: var(--shadow); min-width: 0; }
 
 /* top bar */
