@@ -15,6 +15,7 @@
   --card: #ffffff;
   --ink: #0b0d14;
   --muted: #868b96;
+  --related-ink: #4f5461;
   --faint: #c9cdd5;
   --line: #e6e8ed;
   --blue: #2b4bf2;
@@ -35,13 +36,13 @@
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --ground: #08090d; --tile: #11131a; --card: #191c25; --ink: #f2f3f7; --muted: #8d93a1; --faint: #3a3f4c;
+    --ground: #08090d; --tile: #11131a; --card: #191c25; --ink: #f2f3f7; --muted: #8d93a1; --related-ink: #c2c7d1; --faint: #3a3f4c;
     --line: #262a35; --blue: #5a74ff; --blue-soft: #1d2550; --orange: #ff7a35; --night: #000000; --night-ink: #ffffff;
     --shadow: 0 1px 2px rgba(0,0,0,.4), 0 4px 14px rgba(0,0,0,.3); --pos-adverb: #6f7889; color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
-  --ground: #08090d; --tile: #11131a; --card: #191c25; --ink: #f2f3f7; --muted: #8d93a1; --faint: #3a3f4c;
+  --ground: #08090d; --tile: #11131a; --card: #191c25; --ink: #f2f3f7; --muted: #8d93a1; --related-ink: #c2c7d1; --faint: #3a3f4c;
   --line: #262a35; --blue: #5a74ff; --blue-soft: #1d2550; --orange: #ff7a35; --night: #000000; --night-ink: #ffffff;
   --shadow: 0 1px 2px rgba(0,0,0,.4), 0 4px 14px rgba(0,0,0,.3); --pos-adverb: #6f7889; color-scheme: dark;
 }
@@ -169,7 +170,7 @@ form.search {
 .node rect { fill: var(--card); stroke: var(--line); stroke-width: 1; filter: url(#lift); transition: stroke .2s ease; }
 .node text { font-family: var(--font); font-size: 16px; font-weight: 500; fill: var(--ink); text-anchor: middle; dominant-baseline: central; transition: fill .2s ease; }
 .node.related rect { filter: none; fill: var(--ground); stroke: transparent; }
-.node.related text { fill: var(--muted); font-weight: 400; }
+.node.related text { fill: var(--related-ink); font-weight: 400; }
 .node:hover rect, .node:focus-visible rect, .node.lit rect { stroke: var(--blue); }
 .node:hover text, .node:focus-visible text, .node.lit text { fill: var(--blue); }
 .node:focus, .node:focus-visible, .sense:focus { outline: none; }
@@ -218,7 +219,7 @@ form.search {
   background: var(--card); border: 1px solid var(--line); border-radius: 999px; padding: 4px 11px; font-size: 13.5px;
   transition: color .2s ease, border-color .2s ease, background .2s ease;
 }
-.chip.related { background: var(--ground); border-color: transparent; color: var(--muted); }
+.chip.related { background: var(--ground); border-color: transparent; color: var(--related-ink); }
 .chip:hover, .chip.lit { color: var(--blue); border-color: var(--blue); }
 .chip.opposite { border-style: dashed; border-color: var(--orange); }
 .opp-card .chips { padding: 4px 14px 14px; }
